@@ -5,7 +5,7 @@
 #
 # written by Csaba Schneider 
 
-using LightGraphs, MetaGraphs
+using Graphs, MetaGraphs
 
 mutable struct TreeIterator
     current_graph::MetaGraph
