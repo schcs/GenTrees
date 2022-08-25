@@ -11,17 +11,36 @@ struct TreeIt
     n_vert::Int64
 end
 
-Base.eltype(::Type{TreeIt}) = SimpleGraph{Int64}
-
-function Base.length(TI::TreeIt)::Int64
+function Base.eltype(::Type{TreeIt})
+    SimpleGraph{Int64}
+end
+Base.@propagate_inbounds function Base.length(TI::TreeIt)::Int64
 
     TI.n_vert < 4 && return 1
-    n = TI.n_vert
+    a = Vector{Int64}(undef, TI.n_vert) #OEIS A000081
+    a[1] = 1; a[2] = 1; a[3] = 2; a[4] = 4;
+    local first::Int64
+    local second::Int64
+    local len::Int64
 
-    len = a(n) - sum(i->a(i)*a(n-i),1:(n ÷ 2))
+    for n in 5:TI.n_vert
+        first = a[n-1]
+        for k in 2:(n-1)
+            second = k*a[k] + 1
+            for d in 2:(k-1)
+                k % d > 0 && continue
+                second += d*a[d]
+            end
+            first += second*a[n-k]
+        end
+        a[n] = first÷(n-1)
+    end
+    
+    len = a[TI.n_vert] - sum(i->a[i]*a[TI.n_vert-i],1:(TI.n_vert >>> 1))
 
-    if iseven(n)
-        len += binomial(a(n ÷ 2) + 1, 2)
+    if TI.n_vert % 2 == 0
+        a_n = a[TI.n_vert >>> 1]
+        len += ((a_n + 1)*a_n) >>> 1
     end
 
     return len
@@ -29,8 +48,13 @@ function Base.length(TI::TreeIt)::Int64
 end
 
 function Base.iterate( TI::TreeIt, ggd::Dict{Any,Any} = Dict() )::Union{Nothing, Tuple{SimpleGraph{Int64}, Dict{Any,Any}}}
-    
+
     if isempty(ggd) #first iteration
+        
+        if TI.n_vert < 4
+            return StarGraph(TI.n_vert), Dict('q' => 0)
+        end
+
         n = TI.n_vert
         k = n÷2 + 1
         L = [ 1:k; 2:n-k+1 ];
@@ -43,7 +67,7 @@ function Base.iterate( TI::TreeIt, ggd::Dict{Any,Any} = Dict() )::Union{Nothing,
             c = Float64(n+1)
         end 
 
-        return LevelSequenceToLightGraph( L ), Dict( 'L' => L, 'W' => W, 'n' => n, 'p' => p, 'q' => q, "h1" => h1, "h2" => h2, 'c' => c, 'r' => r )
+        return LevelSequenceToGraph( L ), Dict( 'L' => L, 'W' => W, 'n' => n, 'p' => p, 'q' => q, "h1" => h1, "h2" => h2, 'c' => c, 'r' => r )
     end
 
     if ggd['q'] == 0 #last iteration
@@ -147,10 +171,10 @@ function Base.iterate( TI::TreeIt, ggd::Dict{Any,Any} = Dict() )::Union{Nothing,
         end
     end
 
-    return LevelSequenceToLightGraph( l ), Dict( 'L' => L, 'W' => W, 'n' => n, 'p' => p, 'q' => q, "h1" => h1, "h2" => h2, 'c' => c, 'r' => r )
+    return LevelSequenceToGraph( l ), Dict( 'L' => L, 'W' => W, 'n' => n, 'p' => p, 'q' => q, "h1" => h1, "h2" => h2, 'c' => c, 'r' => r )
 end
 
-function LevelSequenceToLightGraph( seq::Vector{Int64} )::SimpleGraph{Int64}
+function LevelSequenceToGraph( seq::Vector{Int64} )::SimpleGraph{Int64}
 
     edges = Dict{Int64,Int64}()
     # root = 1
@@ -172,7 +196,7 @@ function LevelSequenceToLightGraph( seq::Vector{Int64} )::SimpleGraph{Int64}
     return SimpleGraph( Edge.( [ (i,edges[i] ) for i in keys( edges )]))
 end
 
-function a(n::Int64)::Int64  #OEIS A000081
+function a(n::Int64)::Int64
     # a(n) = (1/(n-1)) * Sum_{k=1..n-1} ( Sum_{d|k} d*a(d) ) * a(n-k)
     n < 3 && return 1;
 
@@ -192,3 +216,10 @@ function a(n::Int64)::Int64  #OEIS A000081
 
     return first ÷ (n-1)
 end
+
+println(raw"This is an implementation of the algorithm to generate
+all trees on n vertices up to isomorphism.
+The algorithm is described in the paper:
+    CONSTANT TIME GENERATION OF FREE TREES
+by ROBERT ALAN WRIGHTS’, BRUCE RICHMONDT, ANDREW ODLYZKO AND BRENDAN D. MCKAY 
+written by Csaba Schneider, contribution from Giosuè Muratore.");
