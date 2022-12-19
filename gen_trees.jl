@@ -12,10 +12,15 @@ mutable struct TreeIterator
     num_vert::Int64
 end
 
+# We set up the tree iterator with the path graph as the first tree
+
 function TreeIterator( n::Integer )
-    return TreeIterator( path_params( n ), n )
+    return TreeIterator( path_tree( n ), n )
 end 
 
+# computes the next tree, given the tree G
+# This function follows the description in Wrights et al. cited at the 
+# beginning of the file
 
 function next_tree( G )
 
@@ -128,7 +133,9 @@ function next_tree( G )
     return G
 end
 
-function path_params( n )
+# The path tree on n vertices
+
+function path_tree( n )
 
     k = n÷2 + 1
     L = [ 1:k; 2:n-k+1 ]
@@ -149,9 +156,11 @@ function path_params( n )
     return G
 end 
 
+# returns all trees on n vertices
+
 function all_trees( n )
 
-    p = path_params( n )
+    p = path_tree( n )
     list = [ p ]
 
     while true 
@@ -163,11 +172,13 @@ function all_trees( n )
     return list
 end
 
+# turns level sequence into graph
+
 LevelSequenceToLightGraph = function( seq )
 
     edges = Dict{Int64,Int64}()
-    root = 1
-    current_level = 2
+    #root = 1 TO BE REMOVED 
+    #current_level = 2
     current_root = 1
     for i in 2:length( seq )
         if seq[i] == seq[i-1]+1 
@@ -280,6 +291,7 @@ end
 
 function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 )
 
+    has_dc = has_double_center( level_seq )
     nv = length( level_seq )
     if nv == 1
         next_col_pos = findfirst( x-> x > coloring[1] && x != parent_color, colors )
@@ -363,8 +375,9 @@ end
 function all_colors( ls, colors )
 
     colorings = [ minimal_coloring( ls, colors )]
+    
     while true
-        new_col = next_coloring( ls, colorings[end], colors )
+        new_col = next_coloring( ls, copy(colorings[end]), colors )
         if new_col != Nothing 
             push!( colorings, new_col )
         else 
@@ -386,3 +399,33 @@ function nr_colors( ls, colors )
         end 
     end 
 end 
+
+is_leaf_in_level_sequence( ls, i ) = ls[i] >= ls[i+1]
+
+# The following function is to calculate the center of a tree.
+# Taken from  the pseudocode in 
+# https://towardsdatascience.com/graph-theory-center-of-a-tree-a64b63f9415d
+
+
+function has_double_center( ls )
+
+    l = length( ls )
+    
+    end_left = 0
+    for i in 3:l
+        if ls[i] == 2
+            end_left = i
+            break
+        end 
+    end 
+
+    if end_left == 0 return false end 
+
+    tree_left = ls[2:end_left-1]
+    tree_right = [ ls[i] + 1 for i in vcat( [1], end_left:l )]
+
+    has_dc = tree_left == tree_right
+    #set_prop!( t, :has_dc, has_dc )
+    return has_dc
+end    
+        
