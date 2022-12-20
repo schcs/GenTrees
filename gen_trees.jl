@@ -267,6 +267,8 @@ function canonical_coloring( t, coloring )
         
     
 end
+
+greedy_coloring in the package Graphs
   
 =#
 
@@ -293,9 +295,10 @@ function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 
 
     has_dc = has_double_center( level_seq )
     nv = length( level_seq )
+
     if nv == 1
         next_col_pos = findfirst( x-> x > coloring[1] && x != parent_color, colors )
-        if next_col_pos isa Nothing
+        if next_col_pos isa nothing
             return Nothing
         else
             return [colors[next_col_pos]]
@@ -317,7 +320,7 @@ function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 
         if k == 1 
             new_cols = next_coloring( subgraphs[k], col_children[k], colors, 
                                         parent_color = coloring[1] )
-            if new_cols != Nothing 
+            if new_cols != nothing 
                 coloring[children[k]:children_ends[k]] = new_cols; 
                 return coloring
             else 
@@ -326,14 +329,14 @@ function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 
                     if coloring[1] == parent_color 
                         coloring[1] += 1
                     end 
-                    if coloring[1] > colors[end] return Nothing end 
+                    if coloring[1] > colors[end] return nothing end 
                     for i in 1:nr_children
                         cols = minimal_coloring( subgraphs[i], colors, parent_color = coloring[1] )
                         coloring[children[i]:children_ends[i]] = cols  
-                    end; 
+                    end
                     return coloring
                 else
-                    return Nothing
+                    return nothing
                 end 
             end 
         elseif k != 1 && subgraphs[k] != subgraphs[k-1]
@@ -351,7 +354,7 @@ function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 
         elseif k >= 2 && subgraphs[k] == subgraphs[k-1] && col_children[k] != col_children[k-1] 
             new_cols = next_coloring( subgraphs[k], col_children[k], colors, 
                                         parent_color = coloring[1])
-            if new_cols != Nothing 
+            if new_cols != nothing 
                 coloring[children[k]:children_ends[k]] = new_cols; 
                 return coloring
             else 
@@ -369,7 +372,7 @@ function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 
             k -= 1 
         end 
     end
-    return Nothing
+    return nothing
 end
  
 function all_colors( ls, colors )
@@ -392,7 +395,7 @@ function nr_colors( ls, colors )
     k = 1
     while true
         new_col = next_coloring( ls, colorings[end], colors )
-        if new_col == Nothing 
+        if new_col == nothing 
             return k
         else 
             k += 1
@@ -428,4 +431,20 @@ function has_double_center( ls )
     #set_prop!( t, :has_dc, has_dc )
     return has_dc
 end    
+
+#=
+function dc_sequence_without_color(g::Graph)
+    return bellman_ford_shortest_paths(g,1).dists+ones(Int64,nv(g))
+end
+=#
         
+function next_coloring_iter( levelseq, colors )
+
+    l = length( ls )
+    max_col = colors[end]
+
+    for i in ls:1:-1
+        if colors[i] < max_col 
+            colors[i] = colors[i]+1
+            return colors
+
