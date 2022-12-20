@@ -229,7 +229,7 @@ end
 
 function end_of_subgraph( ls, v )
     end_ver = findfirst( k -> k <= ls[v], ls[v+1:end] )
-    return typeof( end_ver ) == Nothing ? length( ls )-v+1 : end_ver
+    return end_ver isa Nothing ? length( ls )-v+1 : end_ver
 end 
 
 function level_sequence_of_subgraph( ls, v )
@@ -293,13 +293,13 @@ end
 
 function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 )
 
-    has_dc = has_double_center( level_seq )
+    #has_dc = has_double_center( level_seq )
     nv = length( level_seq )
 
     if nv == 1
         next_col_pos = findfirst( x-> x > coloring[1] && x != parent_color, colors )
-        if next_col_pos isa nothing
-            return Nothing
+        if next_col_pos isa Nothing
+            return nothing
         else
             return [colors[next_col_pos]]
         end 
@@ -341,7 +341,7 @@ function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 
             end 
         elseif k != 1 && subgraphs[k] != subgraphs[k-1]
             new_cols = next_coloring( subgraphs[k], col_children[k], colors,parent_color = coloring[1] )
-            if new_cols != Nothing 
+            if new_cols != nothing 
                 coloring[children[k]:children_ends[k]] = new_cols; 
                 return coloring
             else 
@@ -381,7 +381,7 @@ function all_colors( ls, colors )
     
     while true
         new_col = next_coloring( ls, copy(colorings[end]), colors )
-        if new_col != Nothing 
+        if new_col != nothing 
             push!( colorings, new_col )
         else 
             return colorings 
@@ -408,6 +408,7 @@ is_leaf_in_level_sequence( ls, i ) = ls[i] >= ls[i+1]
 # The following function is to calculate the center of a tree.
 # Taken from  the pseudocode in 
 # https://towardsdatascience.com/graph-theory-center-of-a-tree-a64b63f9415d
+
 
 
 function has_double_center( ls )
@@ -437,7 +438,9 @@ function dc_sequence_without_color(g::Graph)
     return bellman_ford_shortest_paths(g,1).dists+ones(Int64,nv(g))
 end
 =#
-        
+
+#=
+
 function next_coloring_iter( levelseq, colors )
 
     l = length( ls )
@@ -448,3 +451,4 @@ function next_coloring_iter( levelseq, colors )
             colors[i] = colors[i]+1
             return colors
 
+=#
