@@ -3,9 +3,7 @@
 # CONSTANT TIME GENERATION OF FREE TREES*
 # ROBERT ALAN WRIGHTS’, BRUCE RICHMONDT, ANDREW ODLYZKO AND BRENDAN D. MCKAY
 #
-# written by Csaba Schneider 
-
-using Graphs, MetaGraphs
+# written by Giosuè Muratore and Csaba Schneider 
 
 mutable struct TreeIterator
     current_graph::MetaGraph
@@ -125,7 +123,7 @@ function next_tree( G )
         end
     end
 
-    G = MetaGraph( LevelSequenceToLightGraph( l ))
+    G = MetaGraph( level_sequence_to_graph( l ))
     set_prop!( G, :graph_gen_data, 
             Dict( 'L' => l, 'W' => w, 'n' => n, 'p' => p, 'q' => q, 
                   "h1" => h1, "h2" => h2, 'c' => c, 'r' => r ))
@@ -148,7 +146,7 @@ function path_tree( n )
         c = Float64(n+1)
     end 
 
-    G = MetaGraph( LevelSequenceToLightGraph( L ))
+    G = MetaGraph( level_sequence_to_graph( L ))
     set_prop!( G, :graph_gen_data, 
             Dict( 'L' => L, 'W' => W, 'n' => n, 'p' => p, 'q' => q, 
                   "h1" => h1, "h2" => h2, 'c' => c, 'r' => r ))
@@ -172,29 +170,6 @@ function all_trees( n )
     return list
 end
 
-# turns level sequence into graph
-
-LevelSequenceToLightGraph = function( seq )
-
-    edges = Dict{Int64,Int64}()
-    #root = 1 TO BE REMOVED 
-    #current_level = 2
-    current_root = 1
-    for i in 2:length( seq )
-        if seq[i] == seq[i-1]+1 
-            push!( edges, i => current_root )
-            current_root = i
-        else 
-            for i in 1:seq[i-1]-seq[i]+1
-                current_root = edges[current_root]
-            end 
-            push!( edges, i => current_root )
-            current_root = i
-        end
-    end
-
-    return SimpleGraph( Edge.( [ (i,edges[i] ) for i in keys( edges )]))
-end
 
 
 function Base.iterate( TI::TreeIterator, c=0 )
@@ -205,47 +180,6 @@ function Base.iterate( TI::TreeIterator, c=0 )
 end 
 
 
-function level_sequence( g::AbstractGraph )
-
-    if has_prop( g, :level_sequence )
-        return get_prop( g, :level_sequence )
-    end
-
-    vert_list = [(1,1)]
-    visited = []
-    level_seq = []
-
-    while length( vert_list ) > 0
-        (ver, current_level) = pop!( vert_list )
-        push!( visited, ver )
-        push!( level_seq, current_level )
-        append!( vert_list, 
-            reverse( [ (x,current_level+1) for x in neighbors( g, ver ) if !(x in visited) ]))
-    end 
-
-    set_prop!( g, :level_sequence, level_seq )
-    return level_seq
-end
-
-function end_of_subgraph( ls, v )
-    end_ver = findfirst( k -> k <= ls[v], ls[v+1:end] )
-    return typeof( end_ver ) == Nothing ? length( ls )-v+1 : end_ver
-end 
-
-function level_sequence_of_subgraph( ls, v )
-    
-    return ls[v:end_of_subgraph( ls, v )+v-1]
-end 
-
-function is_coloring( t, colors )
-
-    for e in edges( t )
-        if colors[src(e)] == colors[dst(e)]
-            return false
-        end 
-    end
-    return true
-end 
 
 #=
 
@@ -272,179 +206,5 @@ greedy_coloring in the package Graphs
   
 =#
 
-function minimal_coloring( levelseq, colors; parent_color = false )
-    
-    if parent_color isa Bool 
-        root_color = colors[1]
-    else 
-        root_color = findfirst( x -> x != parent_color, colors )
-    end 
 
-    col_even = findfirst( x -> x != root_color, colors )
-    col_odd = findfirst( x-> x != col_even, colors )
-
-    if levelseq[1] % 2 == 0 
-        col_even, col_odd = col_odd, col_even
-    end
-
-    return vcat( [root_color], 
-        [ levelseq[i] % 2 == 0 ? col_even : col_odd for i in 2:length(levelseq)])
-end
-
-function next_coloring( level_seq, coloring, colors; parent_color = colors[1]-1 )
-
-    has_dc = has_double_center( level_seq )
-    nv = length( level_seq )
-
-    if nv == 1
-        next_col_pos = findfirst( x-> x > coloring[1] && x != parent_color, colors )
-        if next_col_pos isa nothing
-            return Nothing
-        else
-            return [colors[next_col_pos]]
-        end 
-    end 
-
-    first_level = level_seq[1]
-
-    children = [ x for x in 1:nv if level_seq[x] == first_level+1 ]
-    nr_children = length( children )
-    subgraphs = [ level_sequence_of_subgraph( level_seq, c ) for c in children ]
-    children_ends = [ end_of_subgraph( level_seq, c ) + c-1 for c in children ]
-    col_children = [ coloring[children[i]:children_ends[i]] for i in 1:nr_children]
-    k = nr_children
-
-    while  k>= 0
-        c = children[k]
-
-        if k == 1 
-            new_cols = next_coloring( subgraphs[k], col_children[k], colors, 
-                                        parent_color = coloring[1] )
-            if new_cols != nothing 
-                coloring[children[k]:children_ends[k]] = new_cols; 
-                return coloring
-            else 
-                if coloring[1] != colors[end]
-                    coloring[1] += 1
-                    if coloring[1] == parent_color 
-                        coloring[1] += 1
-                    end 
-                    if coloring[1] > colors[end] return nothing end 
-                    for i in 1:nr_children
-                        cols = minimal_coloring( subgraphs[i], colors, parent_color = coloring[1] )
-                        coloring[children[i]:children_ends[i]] = cols  
-                    end
-                    return coloring
-                else
-                    return nothing
-                end 
-            end 
-        elseif k != 1 && subgraphs[k] != subgraphs[k-1]
-            new_cols = next_coloring( subgraphs[k], col_children[k], colors,parent_color = coloring[1] )
-            if new_cols != Nothing 
-                coloring[children[k]:children_ends[k]] = new_cols; 
-                return coloring
-            else 
-                for i in k:nr_children
-                    cols = minimal_coloring( subgraphs[i], colors, parent_color = coloring[1] )
-                    coloring[children[i]:children_ends[i]] = cols  
-                end 
-                k -= 1
-            end
-        elseif k >= 2 && subgraphs[k] == subgraphs[k-1] && col_children[k] != col_children[k-1] 
-            new_cols = next_coloring( subgraphs[k], col_children[k], colors, 
-                                        parent_color = coloring[1])
-            if new_cols != nothing 
-                coloring[children[k]:children_ends[k]] = new_cols; 
-                return coloring
-            else 
-                for i in k:nr_children
-                    cols = minimal_coloring( subgraphs[i], colors, parent_color = coloring[1] )
-                    coloring[children[i]:children_ends[i]] = cols 
-                end 
-                k = nr_children
-            end
-        else 
-            for i in k:nr_children
-                cols = minimal_coloring( subgraphs[i], colors, parent_color = coloring[1] )
-                coloring[children[i]:children_ends[i]] = cols 
-            end 
-            k -= 1 
-        end 
-    end
-    return nothing
-end
- 
-function all_colors( ls, colors )
-
-    colorings = [ minimal_coloring( ls, colors )]
-    
-    while true
-        new_col = next_coloring( ls, copy(colorings[end]), colors )
-        if new_col != Nothing 
-            push!( colorings, new_col )
-        else 
-            return colorings 
-        end 
-    end 
-end 
-
-function nr_colors( ls, colors )
-
-    colorings = [ minimal_coloring( ls, colors )]
-    k = 1
-    while true
-        new_col = next_coloring( ls, colorings[end], colors )
-        if new_col == nothing 
-            return k
-        else 
-            k += 1
-        end 
-    end 
-end 
-
-is_leaf_in_level_sequence( ls, i ) = ls[i] >= ls[i+1]
-
-# The following function is to calculate the center of a tree.
-# Taken from  the pseudocode in 
-# https://towardsdatascience.com/graph-theory-center-of-a-tree-a64b63f9415d
-
-
-function has_double_center( ls )
-
-    l = length( ls )
-    
-    end_left = 0
-    for i in 3:l
-        if ls[i] == 2
-            end_left = i
-            break
-        end 
-    end 
-
-    if end_left == 0 return false end 
-
-    tree_left = ls[2:end_left-1]
-    tree_right = [ ls[i] + 1 for i in vcat( [1], end_left:l )]
-
-    has_dc = tree_left == tree_right
-    #set_prop!( t, :has_dc, has_dc )
-    return has_dc
-end    
-
-#=
-function dc_sequence_without_color(g::Graph)
-    return bellman_ford_shortest_paths(g,1).dists+ones(Int64,nv(g))
-end
-=#
-        
-function next_coloring_iter( levelseq, colors )
-
-    l = length( ls )
-    max_col = colors[end]
-
-    for i in ls:1:-1
-        if colors[i] < max_col 
-            colors[i] = colors[i]+1
-            return colors
 
