@@ -25,8 +25,8 @@ function n_colorations(ls::Vector{Int64}, n::Int64)::Int64
     if ls[1] == 1  # ls[1] == 1 is equivalent to be a starting-point graph
         if iseven(length(ls))  # necessary condition to have the bad involution
             if view(ls,my_child[1]+1:my_child[2]-1) == 1 .+ view(ls,my_child[2]:length(ls))  # check if it has the bad involution
-                a = n_colorations(ls[my_child[1]:my_child[2]-1], n)   
-                return div(n*(a^2),2*(n-1))  # return the number of coloration computing only the number of colorations of the main subtree
+                c = n_colorations(ls[my_child[1]:my_child[2]-1], n)   # compute the number of colorations of the main subgraph
+                return div(n*(c^2),2*(n-1))  # return the number of coloration computing only the number of colorations of the main subtree
             end
         end
         ans = n  # in the starting-point graph, the root can assume n values since it has no parent
@@ -49,7 +49,7 @@ function n_colorations(ls::Vector{Int64}, n::Int64)::Int64
         end
     end
 
-    c = n_colorations(last_sub, n)  # compute the colorations of the last subgraph
+    c = n_colorations(last_sub, n)  # compute the number of colorations of the last subgraph
     ans *= binomial(c+m-1,m)        # with multiplicity
 
     return ans
