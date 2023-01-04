@@ -15,6 +15,9 @@
 
 function has_central_involution( ls )
 
+    # if the graph is o--o then the answer is yes
+    if ls == [1,2] return true end 
+
     l = length( ls )
     
     # the tree is split into a "left tree" and a "right tree". The left tree is simply the 
